@@ -1,29 +1,32 @@
 import enum
+from typing import Any, Tuple
 import hashlib
 import pathlib
+from pathlib import Path
 
-import ipywidgets
-import numpy as np
-from IPython import display
-from PIL import Image
+import ipywidgets  # type: ignore
+import matplotlib as mpl  # type: ignore
+import numpy as np  # type: ignore
+from IPython import display  # type: ignore
+from PIL import Image  # type: ignore
 
-IMG_DIR = 'img'
+from . import config as cfg
 
 
 class Size(enum.Enum):
     SMALL = 1
     LARGE = 2
 
-    def get_size(self):
+    def get_size(self) -> Tuple[int, int]:
         if self == Size.SMALL:
-            return 4., 3.
+            return cfg['size_small']
         if self == Size.LARGE:
-            return 8., 6.
+            return cfg['size_large']
 
         raise Exception('Unknown size')
 
 
-def hash_img(filename):
+def hash_img(filename: str) -> str:
     img = Image.open(filename).convert('RGBA')
     pixels = np.array(img).ravel()
 
@@ -32,16 +35,28 @@ def hash_img(filename):
     return hsh.hexdigest()
 
 
-def save_fig(fig, filename_base, resize=Size.SMALL, **kwargs):
+def init() -> None:
+    mpl.use('pgf')
+    mpl.rcParams.update({
+        'font.family': 'serif',
+        'text.usetex': True,
+        'pgf.texsystem': 'lualatex',
+        'pgf.rcfonts': False,
+    })
+
+    Path(cfg['img_dir']).mkdir(exist_ok=True)
+
+
+def save_fig(fig: Any, filename_base: str, resize: Size = Size.SMALL, **kwargs: Any) -> Any:
     if 'dpi' not in kwargs:
-        kwargs['dpi'] = 400
+        kwargs['dpi'] = cfg['dpi']
 
     if resize:
         fig.set_size_inches(resize.get_size())
 
-    return_img = None
+    return_img = ''
     for ftype in ['png', 'pgf']:
-        filename = str(pathlib.Path(IMG_DIR) / f'{filename_base}.{ftype}')
+        filename = str(pathlib.Path(cfg['img_dir']) / f'{filename_base}.{ftype}')
         fig.savefig(filename, **kwargs)
 
         if ftype == 'png':
