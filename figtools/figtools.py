@@ -43,6 +43,8 @@ def save_fig(fig: Any, filename_base: str, resize: Size = Size.SMALL, **kwargs: 
 
     if resize:
         fig.set_size_inches(resize.get_size())
+        
+    fig.tight_layout()
 
     png_fqn = None
     for ftype in ['png', 'pgf']:
