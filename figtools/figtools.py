@@ -60,7 +60,8 @@ def save_fig(fig, filename_base, resize=Size.SMALL, **kwargs):
         kwargs['dpi'] = cfg['dpi']
 
     if resize:
-        fig.set_size_inches(resize.get_size())
+        size = resize.get_size() if hasattr(resize, 'get_size') else resize
+        fig.set_size_inches(size)
         
     ftypes = ['png',]
     if mpl.get_backend() == 'pgf':
