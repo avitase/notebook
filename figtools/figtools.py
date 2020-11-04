@@ -1,8 +1,8 @@
 import base64
 import enum
+import functools
 import io
 import pathlib
-from pathlib import Path
 
 import ipywidgets
 import matplotlib as mpl
@@ -24,11 +24,11 @@ class Size(enum.Enum):
         raise Exception('Unknown size')
 
 
-class FigContext():
+class FigContext:
     def __init__(self, backend='', rcParams=None):
         self.backend = backend if backend else 'pgf'
         self.old_backend = mpl.get_backend()
-        
+
         self.rcParams = {
             'font.family': 'serif',
             'text.usetex': True,
@@ -38,21 +38,28 @@ class FigContext():
 
         if rcParams:
             for k in rcParams:
-                self.rcParams[k] = rcParams[k]    
+                self.rcParams[k] = rcParams[k]
 
         self.old_rcParams = {k: mpl.rcParams[k] for k in self.rcParams}
 
-        
     def __enter__(self):
         mpl.use(self.backend)
         for k in self.rcParams:
             mpl.rcParams[k] = self.rcParams[k]
 
-        
     def __exit__(self, *args):
         mpl.use(self.old_backend)
         for k in self.rcParams:
             mpl.rcParams[k] = self.old_rcParams[k]
+
+
+def with_context(func):
+    @functools.wraps(func)
+    def wrapped(*args, **kwargs):
+        with FigContext():
+            return func(*args, **kwargs)
+
+    return wrapped
 
 
 def save_fig(fig, filename_base, resize=Size.SMALL, **kwargs):
@@ -62,13 +69,12 @@ def save_fig(fig, filename_base, resize=Size.SMALL, **kwargs):
     if resize:
         size = resize.get_size() if hasattr(resize, 'get_size') else resize
         fig.set_size_inches(size)
-        
-    ftypes = ['png',]
+
+    ftypes = ['png', ]
     if mpl.get_backend() == 'pgf':
         ftypes.append('pgf')
 
         fig.tight_layout()
-
 
     png_fqn = None
     for ftype in ftypes:
@@ -102,7 +108,7 @@ def save_fig(fig, filename_base, resize=Size.SMALL, **kwargs):
 
 def img_grid(outputs, *, n_columns, width=300):
     tuples = [o.outputs for o in outputs]
-    
+
     cells = []
     for img, link in tuples:
         img = img['data']['image/png']
@@ -111,17 +117,17 @@ def img_grid(outputs, *, n_columns, width=300):
             f'<img src="data:image/png;base64,{img}" width={width}px />',
             link
         ]))
-    
+
     n_rows = len(cells) // n_columns
     if n_rows * n_columns < len(cells):
         n_rows += 1
-    
+
     rows = []
     for i in range(n_rows):
         start = i * n_columns
         end = start + n_columns
         row = [f'<td style="text-align:center">{cell}</td>' for cell in cells[start:end]]
         rows.append(''.join(row))
-    
+
     body = ''.join([f'<tr>{row}</tr>' for row in rows])
     return display.HTML(f'<table>{body}</table>')
