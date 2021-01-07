@@ -62,7 +62,7 @@ def with_context(func):
     return wrapped
 
 
-def save_fig(fig, filename_base, resize=Size.SMALL, **kwargs):
+def save_fig(fig, filename_base, resize=Size.SMALL, suppress_pgf=False, **kwargs):
     if 'dpi' not in kwargs:
         kwargs['dpi'] = cfg['dpi']
 
@@ -72,7 +72,8 @@ def save_fig(fig, filename_base, resize=Size.SMALL, **kwargs):
 
     ftypes = ['png', ]
     if mpl.get_backend() == 'pgf':
-        ftypes.append('pgf')
+        if not suppress_pgf:
+            ftypes.append('pgf')
 
         fig.tight_layout()
 
