@@ -4,9 +4,8 @@ import functools
 import io
 import pathlib
 
-import ipywidgets
 import matplotlib as mpl
-from IPython import display
+from IPython.display import HTML
 
 from . import config as cfg
 
@@ -62,7 +61,7 @@ def with_context(func):
     return wrapped
 
 
-def save_fig(fig, filename_base, resize=Size.SMALL, suppress_pgf=False, **kwargs):
+def save_fig(fig, filename_base, resize=Size.SMALL, suppress_pgf=False, quiet=False, **kwargs):
     if 'dpi' not in kwargs:
         kwargs['dpi'] = cfg['dpi']
 
@@ -77,13 +76,12 @@ def save_fig(fig, filename_base, resize=Size.SMALL, suppress_pgf=False, **kwargs
 
         fig.tight_layout()
 
-    png_fqn = None
     for ftype in ftypes:
         filename = str(pathlib.Path(cfg['img_dir']) / f'{filename_base}.{ftype}')
         fig.savefig(filename, **kwargs)
 
-        if ftype == 'png':
-            png_fqn = filename
+        if not quiet:
+            print(filename)
 
     img_bytes = io.BytesIO()
     fig.savefig(img_bytes, format='png', **kwargs)
@@ -91,33 +89,17 @@ def save_fig(fig, filename_base, resize=Size.SMALL, suppress_pgf=False, **kwargs
     encoded = base64.b64encode(img_bytes.read()).decode('ascii')
 
     png = f'{filename_base}.png'
-    link = display.HTML(
-        f'<a download="{png}" href="data:image/png;base64,{encoded}">[Download {png}]</a>')
 
-    if mpl.get_backend() == 'pgf':
-        w, h = fig.get_size_inches() * 100
-        w, h = int(w), int(h)
-        img = display.Image(png_fqn, width=w, height=h)
+    link_temp = f'<a download="{png}" href="data:image/png;base64,{encoded}"' + '>{body}</a>'
 
-        out = ipywidgets.Output()
-        out.append_display_data(img)
-        out.append_display_data(link)
-        return out
-    else:
-        return link
+    width, _ = fig.get_size_inches() * 100
+    img = f'<img width={width} src="data:image/png;base64, {encoded}" />'
+
+    return HTML(link_temp.format(body=img))
 
 
-def img_grid(outputs, *, n_columns, width=300):
-    tuples = [o.outputs for o in outputs]
-
-    cells = []
-    for img, link in tuples:
-        img = img['data']['image/png']
-        link = link['data']['text/html']
-        cells.append('<br/>'.join([
-            f'<img src="data:image/png;base64,{img}" width={width}px />',
-            link
-        ]))
+def img_grid(outputs, *, n_columns, width=None):
+    cells = [o.data for o in outputs]
 
     n_rows = len(cells) // n_columns
     if n_rows * n_columns < len(cells):
@@ -130,5 +112,11 @@ def img_grid(outputs, *, n_columns, width=300):
         row = [f'<td style="text-align:center">{cell}</td>' for cell in cells[start:end]]
         rows.append(''.join(row))
 
-    body = ''.join([f'<tr>{row}</tr>' for row in rows])
-    return display.HTML(f'<table>{body}</table>')
+    body = ''.join([f'<tr style="background-color: white">{row}</tr>' for row in rows])
+
+    table_temp = '<table '
+    if width:
+        table_temp += f'style="width: {width}px"'
+    table_temp += '>{body}</table>'
+
+    return HTML(table_temp.format(body=body))
