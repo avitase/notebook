@@ -1,4 +1,3 @@
-import base64
 import enum
 import functools
 import io
@@ -8,6 +7,7 @@ import matplotlib as mpl
 from IPython.display import HTML
 
 from . import config as cfg
+from . import image
 
 
 class Size(enum.Enum):
@@ -86,20 +86,13 @@ def save_fig(fig, filename_base, resize=Size.SMALL, suppress_pgf=False, quiet=Fa
     img_bytes = io.BytesIO()
     fig.savefig(img_bytes, format='png', **kwargs)
     img_bytes.seek(0)
-    encoded = base64.b64encode(img_bytes.read()).decode('ascii')
-
-    png = f'{filename_base}.png'
-
-    link_temp = f'<a download="{png}" href="data:image/png;base64,{encoded}"' + '>{body}</a>'
 
     width, _ = fig.get_size_inches() * 100
-    img = f'<img width={width} src="data:image/png;base64, {encoded}" />'
-
-    return HTML(link_temp.format(body=img))
+    return image.PNGImage(img_bytes.read(), filename_base, width=width)
 
 
-def img_grid(outputs, *, n_columns, width=None):
-    cells = [o.data for o in outputs]
+def img_grid(images, *, n_columns, width=None):
+    cells = [img.to_html() if img else '' for img in images]
 
     n_rows = len(cells) // n_columns
     if n_rows * n_columns < len(cells):
